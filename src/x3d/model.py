@@ -5,15 +5,15 @@ from torch import nn
 
 
 class X3D(L.LightningModule):
-    def __init__(self, num_classes=3):
+    def __init__(self, num_classes: int = 3) -> None:
         super().__init__()
         self.x3d = x3d_l(model_num_class=num_classes)
         self.criterion = nn.MSELoss()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.x3d(x)
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
         loss = self.criterion(logits, label)
@@ -22,7 +22,7 @@ class X3D(L.LightningModule):
         self.__log__(stage="train", loss=loss, acc=acc)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
         loss = self.criterion(logits, label)
@@ -31,10 +31,10 @@ class X3D(L.LightningModule):
         self.__log__(stage="val", loss=loss, acc=acc)
         return loss
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> torch.optim.Optimizer:
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-    def __log__(self, stage: str, **kwargs):
+    def __log__(self, stage: str, **kwargs: dict[str, torch.Tensor]) -> None:
         self.log_dict(
             {f"{stage}_{k}": v for k, v in kwargs.items()},
             on_epoch=True,

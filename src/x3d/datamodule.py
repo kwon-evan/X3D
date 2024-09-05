@@ -116,7 +116,7 @@ class FireDataModule(L.LightningDataModule):
         self.num_workers: int = num_workers
         self.batch_size: int = batch_size
 
-    def setup(self, stage):
+    def setup(self, stage: str) -> None:
         if stage == "fit":
             self.train, self.val = random_split(
                 dataset=self.dataset,
@@ -125,7 +125,7 @@ class FireDataModule(L.LightningDataModule):
         if stage == "test":
             self.test = self.dataset
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self.train,
             num_workers=self.num_workers,
@@ -133,7 +133,7 @@ class FireDataModule(L.LightningDataModule):
             shuffle=True,
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         return DataLoader(
             self.val,
             num_workers=self.num_workers,
@@ -141,7 +141,7 @@ class FireDataModule(L.LightningDataModule):
             shuffle=False,
         )
 
-    def test_dataloader(self):
+    def test_dataloader(self) -> DataLoader:
         return DataLoader(
             self.test,
             num_workers=self.num_workers,
@@ -154,9 +154,18 @@ if __name__ == "__main__":
     URL = "./data/01.원천데이터/"
     dataset = FireDataset(root=URL)  # [3, len_clip, 312, 312]
     print("Dataset length:", len(dataset))
-    # for data in dataset:
-    #     x, label = data
-    #     print(x.shape, label)
 
     datamodule = FireDataModule(root=URL)
     datamodule.setup(stage="fit")
+    print("Train dataset length:", len(datamodule.train))
+    print("Val dataset length:", len(datamodule.val))
+
+    # import os
+    #
+    # os.makedirs("images", exist_ok=True)
+    # for i, (x, label) in enumerate(dataset):
+    #     x = x.permute(1, 0, 2, 3)  # (len_clip, 3, 312, 312)
+    #     for j, tensor in enumerate(x):
+    #         img = tensor.permute(1, 2, 0).numpy() * 255
+    #         cv2.imwrite(f"images/{i}_{j}.jpg", img)
+    #         print(f"img {i}_{j} saved")
