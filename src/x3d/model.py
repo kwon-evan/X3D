@@ -13,7 +13,11 @@ class X3D(L.LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.x3d(x)
 
-    def training_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def training_step(
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
+    ) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
         loss = self.criterion(logits, label)
@@ -22,7 +26,11 @@ class X3D(L.LightningModule):
         self.__log__(stage="train", loss=loss, acc=acc)
         return loss
 
-    def validation_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def validation_step(
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
+    ) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
         loss = self.criterion(logits, label)

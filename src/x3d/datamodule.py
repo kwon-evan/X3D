@@ -1,6 +1,6 @@
+import os
 from glob import glob
 
-import os
 import albumentations as A
 import cv2
 import lightning as L
@@ -182,6 +182,7 @@ if __name__ == "__main__":
     print("Train dataset length:", len(datamodule.train))
     print("Val dataset length:", len(datamodule.val))
 
+    # code for checking images
     import os
 
     os.makedirs("images", exist_ok=True)
