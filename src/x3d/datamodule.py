@@ -1,5 +1,6 @@
 from glob import glob
 
+import os
 import albumentations as A
 import cv2
 import lightning as L
@@ -26,13 +27,9 @@ class FireDataset(Dataset):
         self.img_size: int = img_size
         self.num_classes: int = num_classes
 
-        imgs: npt.NDArray[np.object_] = np.array(
-            sorted(glob(f"{self.root}/**/화재현상/**/*.jpg", recursive=True))
-        )  # (n)
-        self.clips: npt.NDArray[np.object_] = self.imgs2clips(
-            imgs
-        )  # (n // len_clip, len_clip)
-        self.labels: npt.NDArray[np.int_] = self.get_labels()  # (n // len_clip)
+        self.videos = glob(f"{self.root}/**/화재현상/**/JPG/", recursive=True)
+        self.clips = self.get_clips()
+        self.labels = self.get_labels()
 
         self.transform = A.Compose(
             [
@@ -46,20 +43,9 @@ class FireDataset(Dataset):
         return len(self.clips)
 
     def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
-        def path2tensor(path: str) -> Tensor:
-            try:
-                img = cv2.imread(path)
-                if img is None:
-                    raise FileNotFoundError(f"Could not read image file: {path}")
-                img = self.transform(image=img)["image"]
-                return img
-            except Exception as e:
-                print(f"Error processing image {path}: {str(e)}")
-                # Return a blank image tensor as a fallback
-                return torch.zeros((3, 312, 312), dtype=torch.float32)
-
         clip: npt.NDArray[np.object_] = self.clips[idx]
-        x = torch.stack([path2tensor(p) for p in clip])  # (len_clip, 3, 312, 312)
+
+        x = torch.stack([self.path2tensor(p) for p in clip])  # (len_clip, 3, 312, 312)
         x = x.permute(1, 0, 2, 3)  # (3, len_clip, 312, 312)
 
         label = torch.zeros(3, dtype=torch.float)  # (3,)
@@ -67,14 +53,25 @@ class FireDataset(Dataset):
 
         return x, label  # (3, len_clip, 312, 312), (3,)
 
-    def imgs2clips(
-        self,
-        imgs: npt.NDArray[np.object_],  # (n)
-    ) -> npt.NDArray[np.object_]:  # (n // len_clip, len_clip)
-        num_full_clips = len(imgs) // self.len_clip
-        selected_imgs = imgs[: num_full_clips * self.len_clip]
-        clips = selected_imgs.reshape(-1, self.len_clip)
-        return clips
+    def get_clips(self) -> npt.NDArray[np.object_]:
+        ret = []
+        video_dict = {
+            k: sorted(os.listdir(k)) for k in self.videos
+        }  # video_path: [frame1, frame2, ...]
+
+        for k, v in video_dict.items():
+            # make len(frames) to be multiple of len_clip
+            video_frames = v[: len(v) // self.len_clip * self.len_clip]
+            # make filename to full path
+            video_frames = [os.path.join(k, frame) for frame in video_frames]
+            # take clips of len_clip from each video
+            clips = [
+                video_frames[i : i + self.len_clip]
+                for i in range(0, len(video_frames), self.len_clip)
+            ]
+            ret.extend(clips)
+
+        return np.array(ret)
 
     def get_labels(self) -> npt.NDArray[np.int_]:
         def get_label(clip: str) -> int:
@@ -95,6 +92,27 @@ class FireDataset(Dataset):
                 return -1  # Return a sentinel value for error cases
 
         return np.array([get_label(clip) for clip in self.clips])
+
+    def path2tensor(self, path: str) -> Tensor:
+        try:
+            img = cv2.imread(path)
+            if img is None:
+                raise FileNotFoundError(f"Could not read image file: {path}")
+            img = self.transform(image=img)["image"]
+            return img
+        except Exception as e:
+            print(f"Error processing image {path}: {str(e)}")
+            # Return a blank image tensor as a fallback
+            return torch.zeros((3, 312, 312), dtype=torch.float32)
+
+    def imgs2clips(
+        self,
+        imgs: npt.NDArray[np.object_],  # (n)
+    ) -> npt.NDArray[np.object_]:  # (n // len_clip, len_clip)
+        num_full_clips = len(imgs) // self.len_clip
+        selected_imgs = imgs[: num_full_clips * self.len_clip]
+        clips = selected_imgs.reshape(-1, self.len_clip)
+        return clips
 
 
 class FireDataModule(L.LightningDataModule):
@@ -151,21 +169,25 @@ class FireDataModule(L.LightningDataModule):
 
 
 if __name__ == "__main__":
+    from rich import print
+
     URL = "./data/01.원천데이터/"
     dataset = FireDataset(root=URL)  # [3, len_clip, 312, 312]
     print("Dataset length:", len(dataset))
+    for data in dataset:
+        print(data[0].shape, data[1].argmax())  # (3, len_clip, 312, 312), (3,)
 
     datamodule = FireDataModule(root=URL)
     datamodule.setup(stage="fit")
     print("Train dataset length:", len(datamodule.train))
     print("Val dataset length:", len(datamodule.val))
 
-    # import os
-    #
-    # os.makedirs("images", exist_ok=True)
-    # for i, (x, label) in enumerate(dataset):
-    #     x = x.permute(1, 0, 2, 3)  # (len_clip, 3, 312, 312)
-    #     for j, tensor in enumerate(x):
-    #         img = tensor.permute(1, 2, 0).numpy() * 255
-    #         cv2.imwrite(f"images/{i}_{j}.jpg", img)
-    #         print(f"img {i}_{j} saved")
+    import os
+
+    os.makedirs("images", exist_ok=True)
+    for i, (x, label) in enumerate(dataset):
+        x = x.permute(1, 0, 2, 3)  # (len_clip, 3, 312, 312)
+        for j, tensor in enumerate(x):
+            img = tensor.permute(1, 2, 0).numpy() * 255
+            cv2.imwrite(f"images/{i}_{j}.jpg", img)
+            print(f"img {i}_{j} saved")
