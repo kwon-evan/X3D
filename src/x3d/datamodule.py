@@ -28,7 +28,10 @@ class FireDataset(Dataset):
         self.img_size: int = img_size
         self.num_classes: int = num_classes
 
-        self.videos = glob(f"{self.root}/{stage}/**/화재현상/**/JPG/", recursive=True)
+        self.videos = glob(
+            f"{self.root}/**/{stage}/**/화재현상/**/JPG/",
+            recursive=True,
+        )
         self.clips = self.get_clips()
         self.labels = self.get_labels()
 
