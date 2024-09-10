@@ -16,6 +16,7 @@ class FireDataset(Dataset):
     def __init__(
         self,
         root: str,
+        stage: str,
         len_clip: int = 16,
         img_size: int = 312,
         num_classes: int = 3,
@@ -27,7 +28,7 @@ class FireDataset(Dataset):
         self.img_size: int = img_size
         self.num_classes: int = num_classes
 
-        self.videos = glob(f"{self.root}/**/화재현상/**/JPG/", recursive=True)
+        self.videos = glob(f"{self.root}/{stage}/**/화재현상/**/JPG/", recursive=True)
         self.clips = self.get_clips()
         self.labels = self.get_labels()
 
@@ -126,22 +127,33 @@ class FireDataModule(L.LightningDataModule):
     ):
         super().__init__()
 
-        self.dataset: Dataset = FireDataset(
-            root=root,
-            len_clip=len_clip,
-            img_size=img_size,
-        )
+        self.root: str = root
+        self.len_clip: int = len_clip
+        self.img_size: int = img_size
         self.num_workers: int = num_workers
         self.batch_size: int = batch_size
 
     def setup(self, stage: str) -> None:
         if stage == "fit":
-            self.train, self.val = random_split(
-                dataset=self.dataset,
-                lengths=[0.8, 0.2],
+            self.train: Dataset = FireDataset(
+                root=self.root,
+                stage="Training",
+                len_clip=self.len_clip,
+                img_size=self.img_size,
+            )
+            self.val: Dataset = FireDataset(
+                root=self.root,
+                stage="Validation",
+                len_clip=self.len_clip,
+                img_size=self.img_size,
             )
         if stage == "test":
-            self.test = self.dataset
+            self.test: Dataset = FireDataset(
+                root=self.root,
+                stage="Validation",
+                len_clip=self.len_clip,
+                img_size=self.img_size,
+            )
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
@@ -172,7 +184,9 @@ if __name__ == "__main__":
     from rich import print
 
     URL = "./data/01.원천데이터/"
-    dataset = FireDataset(root=URL)  # [3, len_clip, 312, 312]
+    dataset = FireDataset(
+        root=URL, stage="Training", len_clip=16
+    )  # [3, len_clip, 312, 312]
     print("Dataset length:", len(dataset))
     for data in dataset:
         print(data[0].shape, data[1].argmax())  # (3, len_clip, 312, 312), (3,)

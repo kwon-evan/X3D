@@ -81,11 +81,11 @@ if __name__ == "__main__":
             ),
             ModelCheckpoint(
                 dirpath="./checkpoints/",
-                filename="x3d-{epoch:02d}-{val_loss:.2f}",
+                filename="x3d-{epoch:02d}-{val_acc:.2f}",
                 save_top_k=5,
                 verbose=True,
-                monitor="val_loss",
-                mode="min",
+                monitor="val_acc",
+                mode="max",
             ),
         ],
     )
