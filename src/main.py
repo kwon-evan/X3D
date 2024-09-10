@@ -4,12 +4,15 @@ import lightning as L
 import torch
 from lightning.pytorch.callbacks import (
     RichProgressBar,
+    EarlyStopping,
+    ModelCheckpoint,
 )
+from lightning.pytorch.loggers import WandbLogger
 
 from x3d import X3D, FireDataModule
 
 URL = "./data/01.원천데이터/"
-torch.set_float32_matmul_precision("highest")
+torch.set_float32_matmul_precision("high")
 
 
 def parse_args():
@@ -63,12 +66,28 @@ if __name__ == "__main__":
         exit()
 
     trainer: L.Trainer = L.Trainer(
-        logger=False,
+        logger=WandbLogger(project="x3d"),
         devices=args.devices,
         accelerator="auto",
         precision="16-mixed",
         # strategy="ddp",
-        callbacks=[RichProgressBar()],
+        callbacks=[
+            RichProgressBar(),
+            EarlyStopping(
+                monitor="val_loss",
+                mode="min",
+                patience=5,
+                verbose=True,
+            ),
+            ModelCheckpoint(
+                dirpath="./checkpoints/",
+                filename="x3d-{epoch:02d}-{val_loss:.2f}",
+                save_top_k=5,
+                verbose=True,
+                monitor="val_loss",
+                mode="min",
+            ),
+        ],
     )
 
     if args.stage == "train":

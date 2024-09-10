@@ -12,6 +12,7 @@ dependencies = [
     "albumentations>=1.4.14",
     "pytorchvideo>=0.1.5",
     "rich>=13.8.0",
+    "wandb>=0.17.9",
 ]
 requires-python = "==3.12.*"
 readme = "README.md"
