@@ -8,11 +8,9 @@ class X3D(L.LightningModule):
     def __init__(
         self,
         num_classes: int = 3,
-        pretrained: bool = True,
     ) -> None:
         super().__init__()
         self.x3d = x3d_l(
-            pretrained=pretrained,
             model_num_class=num_classes,
         )
         self.criterion = nn.MSELoss()
