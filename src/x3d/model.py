@@ -47,6 +47,7 @@ class X3D(L.LightningModule):
             {f"{stage}_{k}": v for k, v in kwargs.items()},
             on_epoch=True,
             prog_bar=True,
+            sync_dist=True,
         )
 
 
