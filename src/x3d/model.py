@@ -7,12 +7,17 @@ from torch import nn
 class X3D(L.LightningModule):
     def __init__(
         self,
-        num_classes: int = 3,
+        num_class: int = 3,
+        pretrained: bool = True,
     ) -> None:
         super().__init__()
+
         self.x3d = x3d_l(
-            model_num_class=num_classes,
+            model_num_class=400,
+            pretrained=pretrained,
         )
+        self.x3d.blocks[-1].proj = nn.Linear(2048, num_class)
+
         self.criterion = nn.MSELoss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -57,7 +62,7 @@ class X3D(L.LightningModule):
 
 
 if __name__ == "__main__":
-    x3d = X3D()
+    x3d = X3D(num_class=10)
     print(x3d)
     dummy = torch.randn(4, 3, 16, 312, 312)
     print(x3d(dummy).shape)
