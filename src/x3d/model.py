@@ -19,9 +19,9 @@ class X3D(L.LightningModule):
         )
         self.x3d.blocks[-1].proj = nn.Linear(2048, num_class)
 
-        self.mse = nn.MSELoss()
-        self.f1 = F1Score(task="multiclass", num_classes=num_class)
-        self.acc = Accuracy(task="multiclass", num_classes=num_class)
+        self.loss = nn.CrossEntropyLoss()
+        self.f1 = F1Score(task="multiclass", num_classes=num_class, average="macro")
+        self.acc = Accuracy(task="multiclass", num_classes=num_class, average="macro")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.x3d(x)
@@ -33,10 +33,12 @@ class X3D(L.LightningModule):
     ) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
-        loss = self.mse(logits, label)
+        loss = self.loss(logits, label)
 
-        acc = self.acc(logits.argmax(1), label.argmax(1))
-        f1 = self.f1(logits.argmax(1), label.argmax(1))
+        label_idx = torch.argmax(label, dim=1)
+
+        acc = self.acc(logits, label_idx)
+        f1 = self.f1(logits, label_idx)
 
         self.__log__(stage="train", loss=loss, acc=acc, f1=f1)
         return loss
@@ -48,10 +50,12 @@ class X3D(L.LightningModule):
     ) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
-        loss = self.mse(logits, label)
+        loss = self.loss(logits, label)
 
-        acc = self.acc(logits.argmax(1), label.argmax(1))
-        f1 = self.f1(logits.argmax(1), label.argmax(1))
+        label_idx = torch.argmax(label, dim=1)
+
+        acc = self.acc(logits, label_idx)
+        f1 = self.f1(logits, label_idx)
 
         self.__log__(stage="val", loss=loss, acc=acc, f1=f1)
         return loss
