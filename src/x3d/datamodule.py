@@ -93,9 +93,9 @@ class FireDataset(Dataset):
                 _, label, _, _ = filename.split("_")
                 if label == "NONE":
                     return 0
-                elif label == "FL":
-                    return 1
                 elif label == "SM":
+                    return 1
+                elif label == "FL":
                     return 2
                 else:
                     raise ValueError(f"Unexpected label: {label}")
