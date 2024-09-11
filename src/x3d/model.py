@@ -2,6 +2,7 @@ import lightning as L
 import torch
 from pytorchvideo.models.hub import x3d_l
 from torch import nn
+from torchmetrics import F1Score, Accuracy
 
 
 class X3D(L.LightningModule):
@@ -18,7 +19,9 @@ class X3D(L.LightningModule):
         )
         self.x3d.blocks[-1].proj = nn.Linear(2048, num_class)
 
-        self.criterion = nn.MSELoss()
+        self.mse = nn.MSELoss()
+        self.f1 = F1Score(task="multiclass", num_classes=num_class)
+        self.acc = Accuracy(task="multiclass", num_classes=num_class)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.x3d(x)
@@ -30,10 +33,12 @@ class X3D(L.LightningModule):
     ) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
-        loss = self.criterion(logits, label)
-        acc = (logits.argmax(1) == label.argmax(1)).float().mean()
+        loss = self.mse(logits, label)
 
-        self.__log__(stage="train", loss=loss, acc=acc)
+        acc = self.acc(logits.argmax(1), label.argmax(1))
+        f1 = self.f1(logits.argmax(1), label.argmax(1))
+
+        self.__log__(stage="train", loss=loss, acc=acc, f1=f1)
         return loss
 
     def validation_step(
@@ -43,10 +48,12 @@ class X3D(L.LightningModule):
     ) -> torch.Tensor:
         x, label = batch
         logits = self.x3d(x)
-        loss = self.criterion(logits, label)
-        acc = (logits.argmax(1) == label.argmax(1)).float().mean()
+        loss = self.mse(logits, label)
 
-        self.__log__(stage="val", loss=loss, acc=acc)
+        acc = self.acc(logits.argmax(1), label.argmax(1))
+        f1 = self.f1(logits.argmax(1), label.argmax(1))
+
+        self.__log__(stage="val", loss=loss, acc=acc, f1=f1)
         return loss
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
