@@ -24,7 +24,14 @@ def parse_args():
         default="train",
         help="train | valid | test | predict",
     )
-    parser.add_argument("-d", "--data_path", type=str, default=URL, help="path to data")
+    parser.add_argument(
+        "-d",
+        "--data_path",
+        type=str,
+        default=URL,
+        nargs="+",
+        help="data path",
+    )
     parser.add_argument("-b", "--batch_size", type=int, default=8, help="batch size")
     parser.add_argument("-n", "--num_workers", type=int, default=8, help="num workers")
     parser.add_argument(

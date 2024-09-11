@@ -9,13 +9,13 @@ import numpy.typing as npt
 import torch
 from albumentations.pytorch import ToTensorV2
 from torch import Tensor
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset
 
 
 class FireDataset(Dataset):
     def __init__(
         self,
-        root: str,
+        roots: str | list[str],
         stage: str,
         len_clip: int = 16,
         img_size: int = 312,
@@ -23,15 +23,23 @@ class FireDataset(Dataset):
     ) -> None:
         super().__init__()
 
-        self.root: str = root
+        if isinstance(roots, str):
+            roots = [roots]
+
+        self.roots: list[str] = roots
+        self.videos: list[str] = []
         self.len_clip: int = len_clip
         self.img_size: int = img_size
         self.num_classes: int = num_classes
 
-        self.videos = glob(
-            f"{self.root}/**/{stage}/**/화재현상/**/JPG/",
-            recursive=True,
-        )
+        for root in self.roots:
+            print("Getting videos from", root)
+            videos = glob(
+                f"{root}/**/{stage}/**/JPG/",
+                recursive=True,
+            )
+            print("Got", len(videos), "Videos")
+            self.videos.extend(videos)
         self.clips = self.get_clips()
         self.labels = self.get_labels()
 
@@ -139,24 +147,28 @@ class FireDataModule(L.LightningDataModule):
     def setup(self, stage: str) -> None:
         if stage == "fit":
             self.train: Dataset = FireDataset(
-                root=self.root,
+                roots=self.root,
                 stage="Training",
                 len_clip=self.len_clip,
                 img_size=self.img_size,
             )
             self.val: Dataset = FireDataset(
-                root=self.root,
+                roots=self.root,
                 stage="Validation",
                 len_clip=self.len_clip,
                 img_size=self.img_size,
             )
+            print("Train dataset length:", len(self.train))
+            print("Val dataset length:", len(self.val))
+
         if stage == "test":
             self.test: Dataset = FireDataset(
-                root=self.root,
+                roots=self.root,
                 stage="Validation",
                 len_clip=self.len_clip,
                 img_size=self.img_size,
             )
+            print("Test dataset length:", len(self.test))
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
@@ -186,26 +198,16 @@ class FireDataModule(L.LightningDataModule):
 if __name__ == "__main__":
     from rich import print
 
-    URL = "./data/01.원천데이터/"
+    URL = "./data/"
     dataset = FireDataset(
-        root=URL, stage="Training", len_clip=16
+        roots=URL, stage="Training", len_clip=16
     )  # [3, len_clip, 312, 312]
     print("Dataset length:", len(dataset))
-    for data in dataset:
-        print(data[0].shape, data[1].argmax())  # (3, len_clip, 312, 312), (3,)
 
-    datamodule = FireDataModule(root=URL)
+    datamodule = FireDataModule(root=URL, batch_size=2)
     datamodule.setup(stage="fit")
-    print("Train dataset length:", len(datamodule.train))
-    print("Val dataset length:", len(datamodule.val))
 
-    # code for checking images
-    import os
-
-    os.makedirs("images", exist_ok=True)
-    for i, (x, label) in enumerate(dataset):
-        x = x.permute(1, 0, 2, 3)  # (len_clip, 3, 312, 312)
-        for j, tensor in enumerate(x):
-            img = tensor.permute(1, 2, 0).numpy() * 255
-            cv2.imwrite(f"images/{i}_{j}.jpg", img)
-            print(f"img {i}_{j} saved")
+    for batch in datamodule.train_dataloader():
+        data, lable = batch
+        print(data.shape, lable)
+        break
