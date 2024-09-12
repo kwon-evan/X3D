@@ -1,8 +1,9 @@
 import lightning as L
 import torch
+from lightning.pytorch.utilities.types import OptimizerLRScheduler
 from pytorchvideo.models.hub import x3d_l
 from torch import nn
-from torchmetrics import F1Score, Accuracy
+from torchmetrics import Accuracy, F1Score
 
 
 class X3D(L.LightningModule):
@@ -10,8 +11,10 @@ class X3D(L.LightningModule):
         self,
         num_class: int = 3,
         pretrained: bool = True,
+        lr: float = 1e-3,
     ) -> None:
         super().__init__()
+        self.lr = lr
 
         self.x3d = x3d_l(
             model_num_class=400,
@@ -58,8 +61,19 @@ class X3D(L.LightningModule):
         self.__log__(stage="val", loss=loss, acc=acc, f1=f1)
         return loss
 
-    def configure_optimizers(self) -> torch.optim.Optimizer:
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
+    def configure_optimizers(
+        self,
+    ) -> OptimizerLRScheduler:
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        scheduler = torch.optim.lr_scheduler.CyclicLR(
+            optimizer, base_lr=1e-5, max_lr=1e-3
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+            },
+        }
 
     def __log__(self, stage: str, **kwargs: dict[str, torch.Tensor]) -> None:
         self.log_dict(
