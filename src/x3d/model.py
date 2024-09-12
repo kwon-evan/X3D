@@ -19,9 +19,9 @@ class X3D(L.LightningModule):
         )
         self.x3d.blocks[-1].proj = nn.Linear(2048, num_class)
 
-        self.loss = nn.CrossEntropyLoss()
-        self.f1 = F1Score(task="multilabel", num_classes=num_class, average="macro")
-        self.acc = Accuracy(task="multilabel", num_classes=num_class, average="macro")
+        self.loss = nn.BCEWithLogitsLoss()
+        self.f1 = F1Score(task="multilabel", num_labels=num_class, average="macro")
+        self.acc = Accuracy(task="multilabel", num_labels=num_class, average="macro")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.x3d(x)
