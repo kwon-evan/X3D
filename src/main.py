@@ -101,9 +101,7 @@ if __name__ == "__main__":
         ],
     )
     tuner: Tuner = Tuner(trainer)
-
     tuner.lr_find(x3d, dm)
-    tuner.scale_batch_size(x3d, dm)
 
     if args.stage == "train":
         trainer.fit(x3d, dm)

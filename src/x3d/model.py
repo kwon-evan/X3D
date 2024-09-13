@@ -22,9 +22,9 @@ class X3D(L.LightningModule):
         )
         self.x3d.blocks[-1].proj = nn.Linear(2048, num_class)
 
-        self.loss = nn.BCEWithLogitsLoss()
-        self.f1 = F1Score(task="multilabel", num_labels=num_class, average="macro")
-        self.acc = Accuracy(task="multilabel", num_labels=num_class, average="macro")
+        self.loss = nn.CrossEntropyLoss()
+        self.f1 = F1Score(task="multiclass", num_classes=num_class, average="macro")
+        self.acc = Accuracy(task="multiclass", num_classes=num_class, average="macro")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.x3d(x)
@@ -38,9 +38,10 @@ class X3D(L.LightningModule):
         logits = self.x3d(x)
         loss = self.loss(logits, label)
 
-        pred = (logits > 0.5).float()
-        acc = self.acc(pred, label)
-        f1 = self.f1(pred, label)
+        label_idx = torch.argmax(label, dim=1)
+
+        acc = self.acc(logits, label_idx)
+        f1 = self.f1(logits, label_idx)
 
         self.__log__(stage="train", loss=loss, acc=acc, f1=f1)
         return loss
@@ -54,9 +55,10 @@ class X3D(L.LightningModule):
         logits = self.x3d(x)
         loss = self.loss(logits, label)
 
-        pred = (logits > 0.5).float()
-        acc = self.acc(pred, label)
-        f1 = self.f1(pred, label)
+        label_idx = torch.argmax(label, dim=1)
+
+        acc = self.acc(logits, label_idx)
+        f1 = self.f1(logits, label_idx)
 
         self.__log__(stage="val", loss=loss, acc=acc, f1=f1)
         return loss
@@ -66,7 +68,11 @@ class X3D(L.LightningModule):
     ) -> OptimizerLRScheduler:
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         scheduler = torch.optim.lr_scheduler.CyclicLR(
-            optimizer, base_lr=1e-5, max_lr=1e-3
+            optimizer,
+            base_lr=1e-5,
+            max_lr=1e-3,
+            gamma=0.85,
+            mode="exp_range",
         )
         return {
             "optimizer": optimizer,
