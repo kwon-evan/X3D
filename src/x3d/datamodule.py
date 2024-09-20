@@ -46,8 +46,8 @@ class FireDataset(Dataset):
         self.transform = A.Compose(
             [
                 A.Resize(img_size, img_size),
-                A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
                 ToTensorV2(),
+                A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ]
         )
 
@@ -108,6 +108,7 @@ class FireDataset(Dataset):
     def path2tensor(self, path: str) -> Tensor:
         try:
             img = cv2.imread(path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             if img is None:
                 raise FileNotFoundError(f"Could not read image file: {path}")
             img = self.transform(image=img)["image"]
