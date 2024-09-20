@@ -3,11 +3,14 @@ import argparse
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import (
-    RichProgressBar,
     EarlyStopping,
     ModelCheckpoint,
+    RichProgressBar,
+    StochasticWeightAveraging,
+    LearningRateMonitor,
 )
 from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.tuner.tuning import Tuner
 
 from x3d import X3D, FireDataModule
 
@@ -77,7 +80,6 @@ if __name__ == "__main__":
         devices=args.devices,
         accelerator="auto",
         precision="16-mixed",
-        # strategy="ddp",
         callbacks=[
             RichProgressBar(),
             EarlyStopping(
@@ -91,11 +93,15 @@ if __name__ == "__main__":
                 filename="x3d-{epoch:02d}-{val_acc:.2f}",
                 save_top_k=5,
                 verbose=True,
-                monitor="val_acc",
-                mode="max",
+                monitor="val_loss",
+                mode="min",
             ),
+            LearningRateMonitor(logging_interval="step"),
+            StochasticWeightAveraging(swa_lrs=1e-2),
         ],
     )
+    tuner: Tuner = Tuner(trainer)
+    tuner.lr_find(x3d, dm)
 
     if args.stage == "train":
         trainer.fit(x3d, dm)
